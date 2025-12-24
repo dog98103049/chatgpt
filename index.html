@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>高溫調適 × 溫度正義 MVP</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      --bg: #f7f5f0;
+      --panel: #ffffff;
+      --ink: #1f1f1f;
+      --muted: #6b6b6b;
+      --accent: #2a6fdb;
+      --danger: #c0392b;
+      --warning: #f39c12;
+      --success: #2ecc71;
+      --border: #e0ded8;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    header {
+      padding: 24px 32px 12px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(280px, 320px) 1fr;
+      gap: 20px;
+      padding: 0 32px 32px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      background: #eef2ff;
+      color: #2a3a8f;
+      font-weight: 600;
+    }
+
+    .region-chip {
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .region-red { background: #ffe8e4; color: #b3362d; }
+    .region-yellow { background: #fff4d1; color: #a36a00; }
+    .region-green { background: #e3f7e8; color: #1a6b3d; }
+    .disabled { opacity: 0.6; }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #dfe6f4;
+      color: #2a3a8f;
+    }
+
+    button.ghost {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+
+    button:disabled {
+      background: #c9c9c9;
+      cursor: not-allowed;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .players {
+      display: grid;
+      gap: 12px;
+    }
+
+    .player-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fbfbfb;
+    }
+
+    .player-card.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(42, 111, 219, 0.15);
+    }
+
+    .log {
+      max-height: 220px;
+      overflow-y: auto;
+      font-size: 13px;
+      color: #3d3d3d;
+      padding-right: 6px;
+    }
+
+    .log p {
+      margin: 0 0 8px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .rule-list {
+      margin: 0;
+      padding-left: 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .section-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 12px 0;
+    }
+
+    .inline {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .inline > * {
+      flex: 1;
+    }
+
+    .trade-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .game-end {
+      padding: 12px;
+      border-radius: 12px;
+      background: #1f1f1f;
+      color: white;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>高溫調適 × 溫度正義 — 線上試玩版</h1>
+    <p class="muted">3–5 人競爭桌遊的單機線上版。輪流操作，共享同一台電腦即可遊玩。</p>
+  </header>
+
+  <main>
+    <section class="panel stack" id="setup-panel">
+      <h2>遊戲設定</h2>
+      <div>
+        <label for="player-count">玩家人數（3–5）</label>
+        <select id="player-count">
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+      </div>
+      <div id="player-names" class="stack"></div>
+      <button id="start-game">開始遊戲</button>
+      <div class="section-divider"></div>
+      <h2>快速規則</h2>
+      <ul class="rule-list">
+        <li>世界毀滅前累積最多資源者獲勝，SSP 到 9 全員失敗。</li>
+        <li>每回合：玩家行動 → 世界狀態 → SSP +1。</li>
+        <li>SSP ≥ 3 紅區玩家每回合 -1 資源；SSP ≥ 6 首次觸發區域失效。</li>
+        <li>SSP ≥ 7 可提議全員各付 1 資源，SSP -1。</li>
+      </ul>
+    </section>
+
+    <section class="panel stack" id="game-panel" hidden>
+      <div class="status-grid">
+        <div>
+          <div class="badge">SSP：<span id="ssp-value">0</span></div>
+          <p class="muted" id="world-status">表面正常</p>
+        </div>
+        <div>
+          <div class="badge">回合：<span id="round-value">1</span></div>
+          <p class="muted">起始玩家：<span id="start-player">—</span></p>
+        </div>
+        <div>
+          <div class="badge">目前行動者</div>
+          <p class="muted" id="current-player">—</p>
+        </div>
+      </div>
+
+      <div class="section-divider"></div>
+
+      <div class="players" id="player-list"></div>
+
+      <div class="section-divider"></div>
+
+      <h2>行動面板</h2>
+      <div class="stack">
+        <div>
+          <label for="action-select">選擇行動</label>
+          <select id="action-select">
+            <option value="collect">採集</option>
+            <option value="build">建造</option>
+            <option value="raid">掠奪</option>
+            <option value="trade">交易</option>
+            <option value="move">搬遷</option>
+          </select>
+        </div>
+        <div id="action-options"></div>
+        <button id="confirm-action">確認行動</button>
+        <button class="secondary" id="end-round">結束回合</button>
+      </div>
+
+      <div class="section-divider"></div>
+
+      <h2>事件紀錄</h2>
+      <div class="log" id="log"></div>
+
+      <div id="game-end" class="game-end" hidden></div>
+    </section>
+  </main>
+
+  <script>
+    const roles = [
+      { name: "豬", ability: "建造行動多拿 1 資源，但 SSP 額外 +1", id: "pig" },
+      { name: "馬", ability: "採集至少拿 1，紅區受懲罰加倍", id: "horse" },
+      { name: "山羊", ability: "交易時多換 1 資源", id: "goat" },
+      { name: "狗", ability: "掠奪成功率較高（骰點 +1）", id: "dog" },
+      { name: "烏鴉", ability: "可偷看下一階段世界狀態", id: "crow" },
+    ];
+
+    const regions = [
+      { id: "red", name: "紅區", collect: 1, style: "region-red" },
+      { id: "yellow", name: "黃區", collect: 2, style: "region-yellow" },
+      { id: "green", name: "綠區", collect: 3, style: "region-green" },
+    ];
+
+    const sspStatus = (value) => {
+      if (value >= 9) return "☠ 世界毀滅";
+      if (value >= 6) return "系統失效";
+      if (value >= 3) return "高溫常態化";
+      return "表面正常";
+    };
+
+    const state = {
+      players: [],
+      currentIndex: 0,
+      startIndex: 0,
+      round: 1,
+      ssp: 0,
+      failedRegion: null,
+      thresholds: {
+        heatTriggered: false,
+        systemTriggered: false,
+      },
+      log: [],
+      gameOver: false,
+    };
+
+    const playerCountEl = document.getElementById("player-count");
+    const playerNamesEl = document.getElementById("player-names");
+    const startGameBtn = document.getElementById("start-game");
+    const setupPanel = document.getElementById("setup-panel");
+    const gamePanel = document.getElementById("game-panel");
+    const playerList = document.getElementById("player-list");
+    const actionSelect = document.getElementById("action-select");
+    const actionOptions = document.getElementById("action-options");
+    const confirmActionBtn = document.getElementById("confirm-action");
+    const endRoundBtn = document.getElementById("end-round");
+    const logEl = document.getElementById("log");
+    const sspValue = document.getElementById("ssp-value");
+    const worldStatus = document.getElementById("world-status");
+    const roundValue = document.getElementById("round-value");
+    const currentPlayerEl = document.getElementById("current-player");
+    const startPlayerEl = document.getElementById("start-player");
+    const gameEndEl = document.getElementById("game-end");
+
+    const shuffle = (array) => array.sort(() => Math.random() - 0.5);
+
+    const log = (message) => {
+      state.log.unshift(`[${new Date().toLocaleTimeString()}] ${message}`);
+      renderLog();
+    };
+
+    const renderLog = () => {
+      logEl.innerHTML = state.log.map((entry) => `<p>${entry}</p>`).join("");
+    };
+
+    const renderPlayerCards = () => {
+      playerList.innerHTML = "";
+      state.players.forEach((player, index) => {
+        const regionInfo = regions.find((region) => region.id === player.region);
+        const isActive = index === state.currentIndex;
+        const card = document.createElement("div");
+        card.className = `player-card ${isActive ? "active" : ""}`;
+        card.innerHTML = `
+          <div class="inline">
+            <strong>${player.name}</strong>
+            <span class="region-chip ${regionInfo.style}">${regionInfo.name}</span>
+          </div>
+          <p class="muted">角色：${player.role.name}｜${player.role.ability}</p>
+          <p>資源：<strong>${player.resources}</strong></p>
+        `;
+        if (player.region === state.failedRegion) {
+          const warning = document.createElement("p");
+          warning.className = "muted";
+          warning.textContent = "區域失效：無法採集與建造";
+          card.appendChild(warning);
+        }
+        playerList.appendChild(card);
+      });
+    };
+
+    const updateStatus = () => {
+      sspValue.textContent = state.ssp;
+      worldStatus.textContent = sspStatus(state.ssp);
+      roundValue.textContent = state.round;
+      const current = state.players[state.currentIndex];
+      currentPlayerEl.textContent = current ? `${current.name}（${current.role.name}）` : "—";
+      const starter = state.players[state.startIndex];
+      startPlayerEl.textContent = starter ? starter.name : "—";
+    };
+
+    const renderActionOptions = () => {
+      const action = actionSelect.value;
+      const current = state.players[state.currentIndex];
+      if (!current) return;
+
+      if (action === "raid") {
+        const options = state.players
+          .filter((player, index) => index !== state.currentIndex && player.region === current.region)
+          .map((player) => `<option value="${player.id}">${player.name}</option>`)
+          .join("");
+        actionOptions.innerHTML = `
+          <label for="raid-target">指定掠奪對象（同區）</label>
+          <select id="raid-target">${options || "<option value=\"\">無可掠奪目標</option>"}</select>
+        `;
+        return;
+      }
+
+      if (action === "trade") {
+        const options = state.players
+          .filter((player, index) => index !== state.currentIndex)
+          .map((player) => `<option value="${player.id}">${player.name}</option>`)
+          .join("");
+        actionOptions.innerHTML = `
+          <div class="trade-grid">
+            <div>
+              <label for="trade-partner">交易對象</label>
+              <select id="trade-partner">${options}</select>
+            </div>
+            <div>
+              <label for="trade-give">你給對方</label>
+              <input id="trade-give" type="number" min="0" value="1" />
+            </div>
+            <div>
+              <label for="trade-receive">你拿到</label>
+              <input id="trade-receive" type="number" min="0" value="1" />
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      if (action === "move") {
+        const options = regions
+          .map((region) => `<option value="${region.id}">${region.name}</option>`)
+          .join("");
+        actionOptions.innerHTML = `
+          <label for="move-target">搬遷目的地</label>
+          <select id="move-target">${options}</select>
+        `;
+        return;
+      }
+
+      actionOptions.innerHTML = "";
+    };
+
+    const applySspIncrease = (amount) => {
+      state.ssp = Math.min(9, state.ssp + amount);
+    };
+
+    const advanceTurn = () => {
+      state.currentIndex = (state.currentIndex + 1) % state.players.length;
+      updateStatus();
+      renderPlayerCards();
+      renderActionOptions();
+    };
+
+    const currentPlayer = () => state.players[state.currentIndex];
+
+    const applyAction = () => {
+      if (state.gameOver) return;
+      const player = currentPlayer();
+      const action = actionSelect.value;
+      const playerRegion = regions.find((region) => region.id === player.region);
+
+      if (["collect", "build"].includes(action) && player.region === state.failedRegion) {
+        log(`${player.name} 嘗試在失效區域行動，但失敗。`);
+        return;
+      }
+
+      if (action === "collect") {
+        let gain = playerRegion.collect;
+        if (player.role.id === "horse") {
+          gain = Math.max(gain, 1);
+        }
+        player.resources += gain;
+        let sspGain = 1;
+        if (playerRegion.id === "green") {
+          sspGain += 1;
+        }
+        applySspIncrease(sspGain);
+        log(`${player.name} 在${playerRegion.name}採集，獲得 ${gain} 資源。SSP +${sspGain}。`);
+      }
+
+      if (action === "build") {
+        if (player.resources < 2) {
+          log(`${player.name} 資源不足，無法建造。`);
+          return;
+        }
+        player.resources -= 2;
+        let gain = 3;
+        let sspGain = 1;
+        if (player.role.id === "pig") {
+          gain += 1;
+          sspGain += 1;
+        }
+        player.resources += gain;
+        applySspIncrease(sspGain);
+        log(`${player.name} 建造獲得 ${gain} 資源。SSP +${sspGain}。`);
+      }
+
+      if (action === "raid") {
+        const targetId = document.getElementById("raid-target")?.value;
+        const target = state.players.find((p) => p.id === targetId);
+        if (!target) {
+          log("沒有可掠奪的對象。");
+          return;
+        }
+        let attackerRoll = Math.ceil(Math.random() * 6);
+        let defenderRoll = Math.ceil(Math.random() * 6);
+        if (player.role.id === "dog") {
+          attackerRoll = Math.min(6, attackerRoll + 1);
+        }
+        if (target.role.id === "dog") {
+          defenderRoll = Math.min(6, defenderRoll + 1);
+        }
+        let winner = null;
+        if (attackerRoll > defenderRoll) {
+          winner = player;
+        } else if (defenderRoll > attackerRoll) {
+          winner = target;
+        }
+        if (!winner) {
+          log(`${player.name} 掠奪與 ${target.name} 平手（${attackerRoll}:${defenderRoll}），無人得利。SSP +1。`);
+          applySspIncrease(1);
+        } else {
+          const loser = winner.id === player.id ? target : player;
+          const loot = Math.min(2, loser.resources);
+          winner.resources += loot;
+          loser.resources -= loot;
+          log(`${winner.name} 掠奪勝利（${attackerRoll}:${defenderRoll}），獲得 ${loot} 資源。SSP +1。`);
+          applySspIncrease(1);
+        }
+      }
+
+      if (action === "trade") {
+        const partnerId = document.getElementById("trade-partner")?.value;
+        const partner = state.players.find((p) => p.id === partnerId);
+        const give = Number(document.getElementById("trade-give")?.value ?? 0);
+        const receive = Number(document.getElementById("trade-receive")?.value ?? 0);
+        if (!partner) {
+          log("請選擇交易對象。");
+          return;
+        }
+        if (give < 0 || receive < 0) {
+          log("交易數量必須為正數或 0。");
+          return;
+        }
+        if (player.resources < give || partner.resources < receive) {
+          log("交易失敗：資源不足。");
+          return;
+        }
+        player.resources = player.resources - give + receive;
+        partner.resources = partner.resources - receive + give;
+        if (player.role.id === "goat") {
+          player.resources += 1;
+        }
+        if (partner.role.id === "goat") {
+          partner.resources += 1;
+        }
+        log(`${player.name} 與 ${partner.name} 完成交易。SSP 不變。`);
+      }
+
+      if (action === "move") {
+        const targetRegion = document.getElementById("move-target")?.value;
+        const regionInfo = regions.find((region) => region.id === targetRegion);
+        if (!regionInfo) {
+          log("請選擇搬遷目的地。");
+          return;
+        }
+        if (player.resources < 4) {
+          log(`${player.name} 資源不足，無法搬遷。`);
+          return;
+        }
+        player.resources -= 4;
+        player.region = regionInfo.id;
+        applySspIncrease(1);
+        log(`${player.name} 搬遷到${regionInfo.name}。SSP +1。`);
+      }
+
+      checkGameOver();
+      renderPlayerCards();
+      updateStatus();
+      renderActionOptions();
+      advanceTurn();
+    };
+
+    const applyWorldState = () => {
+      if (state.ssp >= 3) {
+        state.players.forEach((player) => {
+          if (player.region === "red") {
+            let penalty = 1;
+            if (player.role.id === "horse") {
+              penalty = 2;
+            }
+            player.resources = Math.max(0, player.resources - penalty);
+            log(`${player.name} 在紅區受高溫影響，失去 ${penalty} 資源。`);
+          }
+        });
+      }
+
+      if (state.ssp >= 6 && !state.thresholds.systemTriggered) {
+        const available = regions.filter((region) => region.id !== state.failedRegion);
+        const pick = available[Math.floor(Math.random() * available.length)];
+        state.failedRegion = pick.id;
+        state.thresholds.systemTriggered = true;
+        log(`系統失效！${pick.name} 標記為失效區域。`);
+      }
+
+      if (state.ssp >= 3 && !state.thresholds.heatTriggered) {
+        state.thresholds.heatTriggered = true;
+        log("高溫常態化開始，紅區每回合 -1 資源。");
+      }
+    };
+
+    const proposeCooperation = () => {
+      if (state.ssp < 7) return false;
+      const confirmAll = state.players.every((player) => player.resources >= 1);
+      if (!confirmAll) {
+        log("有人資源不足，無法執行被迫合作提議。");
+        return false;
+      }
+      const agree = window.confirm("SSP ≥ 7，可提議合作：所有人各付 1 資源，SSP -1。是否同意所有人一起付？");
+      if (!agree) {
+        log("合作提議未通過。");
+        return false;
+      }
+      state.players.forEach((player) => {
+        player.resources -= 1;
+      });
+      state.ssp = Math.max(0, state.ssp - 1);
+      log("全員各付 1 資源，SSP -1。合作提議成功。");
+      return true;
+    };
+
+    const endRound = () => {
+      if (state.gameOver) return;
+      log(`回合 ${state.round} 結束，進入世界狀態檢查。`);
+      applyWorldState();
+      if (state.ssp >= 7) {
+        proposeCooperation();
+      }
+      applySspIncrease(1);
+      log("SSP 必然上升 +1。回合結束。 ");
+      state.round += 1;
+      state.startIndex = (state.startIndex + 1) % state.players.length;
+      state.currentIndex = state.startIndex;
+      checkGameOver();
+      updateStatus();
+      renderPlayerCards();
+      renderActionOptions();
+    };
+
+    const checkGameOver = () => {
+      if (state.ssp >= 9) {
+        state.gameOver = true;
+        gameEndEl.hidden = false;
+        gameEndEl.textContent = "☠ 世界毀滅：所有人一起失敗。";
+        confirmActionBtn.disabled = true;
+        endRoundBtn.disabled = true;
+        return;
+      }
+      if (state.ssp >= 8) {
+        state.gameOver = true;
+        const max = Math.max(...state.players.map((p) => p.resources));
+        const winners = state.players.filter((p) => p.resources === max);
+        gameEndEl.hidden = false;
+        gameEndEl.textContent = `🏆 世界尚存，${winners.map((p) => p.name).join("、")} 資源最多獲勝。`;
+        confirmActionBtn.disabled = true;
+        endRoundBtn.disabled = true;
+      }
+    };
+
+    const buildNameInputs = () => {
+      playerNamesEl.innerHTML = "";
+      const count = Number(playerCountEl.value);
+      for (let i = 0; i < count; i += 1) {
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = `
+          <label>玩家 ${i + 1} 名稱</label>
+          <input type="text" value="玩家${i + 1}" />
+        `;
+        playerNamesEl.appendChild(wrapper);
+      }
+    };
+
+    const startGame = () => {
+      const names = Array.from(playerNamesEl.querySelectorAll("input")).map((input) => input.value.trim());
+      const uniqueNames = names.filter((name) => name);
+      if (uniqueNames.length < 3) {
+        alert("至少需要 3 名玩家名稱。");
+        return;
+      }
+      const shuffledRoles = shuffle([...roles]);
+      const shuffledRegions = shuffle([...regions]);
+      state.players = uniqueNames.map((name, index) => {
+        const region = shuffledRegions[index % regions.length].id;
+        const startResources = region === "red" ? 2 : region === "yellow" ? 3 : 4;
+        return {
+          id: `${Date.now()}-${index}`,
+          name,
+          role: shuffledRoles[index % shuffledRoles.length],
+          region,
+          resources: startResources,
+        };
+      });
+      state.currentIndex = 0;
+      state.startIndex = 0;
+      state.round = 1;
+      state.ssp = 0;
+      state.failedRegion = null;
+      state.thresholds = { heatTriggered: false, systemTriggered: false };
+      state.log = [];
+      state.gameOver = false;
+      confirmActionBtn.disabled = false;
+      endRoundBtn.disabled = false;
+      gameEndEl.hidden = true;
+      log("遊戲開始！規則沒有變，是世界變了。");
+      setupPanel.hidden = true;
+      gamePanel.hidden = false;
+      updateStatus();
+      renderPlayerCards();
+      renderActionOptions();
+    };
+
+    playerCountEl.addEventListener("change", buildNameInputs);
+    actionSelect.addEventListener("change", renderActionOptions);
+    confirmActionBtn.addEventListener("click", applyAction);
+    endRoundBtn.addEventListener("click", endRound);
+    startGameBtn.addEventListener("click", startGame);
+
+    buildNameInputs();
+  </script>
+</body>
+</html>
